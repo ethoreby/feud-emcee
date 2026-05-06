@@ -14,6 +14,8 @@
 		    height: 100svh; 
 		    padding-bottom: env(safe-area-inset-bottom); /* Fixes bezel/notch overlap */
 		    overflow: hidden; 
+		    user-select: none; 
+		    -webkit-user-select: none;
 		}
 		
 		/* Disables pull-to-refresh gesture in Chrome */
@@ -54,6 +56,20 @@
         .overlay { position: fixed; inset: 0; background: var(--dark); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
         .sfx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 90%; }
         .big-btn { padding: 30px 10px; font-size: 1.2rem; background: var(--blue); color: white; border: none; border-radius: 10px; }
+
+        /* Pressing effect for all buttons */
+		button:active, .pot-box:active, .strike-group:active {
+		    transform: scale(0.96);
+		    filter: brightness(0.8);
+		    transition: transform 0.05s;
+		}
+
+		/* Specific feedback for the Pot Box and Strike groups since they are <div> elements */
+		.pot-box, .strike-group, button {
+		    transition: transform 0.1s;
+		    cursor: pointer;
+		    -webkit-tap-highlight-color: transparent; /* Removes the blue box on mobile */
+		}
         
         .cooldown { pointer-events: none; opacity: 0.7; }
     </style>
@@ -215,8 +231,18 @@
 
 		function openPotModal() { 
 		    play('ding'); 
-		    document.getElementById('pot-modal').style.display = 'flex'; 
-		    document.getElementById('pot-input').focus(); 
+		    const modal = document.getElementById('pot-modal');
+		    const input = document.getElementById('pot-input');
+		    
+		    modal.style.display = 'flex'; 
+		    input.focus(); 
+
+		    // Listen for the Enter key
+		    input.onkeydown = function(e) {
+		        if (e.key === "Enter") {
+		            submitPot();
+		        }
+		    };
 		}
 
 		function closePotModal() { 
