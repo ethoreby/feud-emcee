@@ -15,6 +15,11 @@
 		    padding-bottom: env(safe-area-inset-bottom); /* Fixes bezel/notch overlap */
 		    overflow: hidden; 
 		}
+		
+		/* Disables pull-to-refresh gesture in Chrome */
+		html, body {
+		    overscroll-behavior-y: contain;
+		}
         
         /* Layout */
         .score-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #000; border-bottom: 2px solid #333; }
@@ -121,114 +126,143 @@
     </div>
 
     <script>
-        let state = { scoreA: 0, scoreB: 0, pot: 0, strikesA: 0, strikesB: 0, muted: false };
-        let history = null;
-        let cooldown = false;
+        // Initialization: Try to load from localStorage, otherwise use default
+		const defaultState = { scoreA: 0, scoreB: 0, pot: 0, strikesA: 0, strikesB: 0, muted: false };
+		let state = JSON.parse(localStorage.getItem('feudGameState')) || defaultState;
+		let history = null;
+		let cooldown = false;
 
-        const sounds = {
-            theme: new Audio('soundEffects/theme.mp3'),
-            ding: new Audio('soundEffects/ding.mp3'),
-            strike: new Audio('soundEffects/strike.mp3'),
-            roundWin: new Audio('soundEffects/roundWin.mp3')
-        };
+		const sounds = {
+		    theme: new Audio('soundEffects/theme.mp3'),
+		    ding: new Audio('soundEffects/ding.mp3'),
+		    strike: new Audio('soundEffects/strike.mp3'),
+		    roundWin: new Audio('soundEffects/roundWin.mp3')
+		};
 
-        function play(key) {
-            if (state.muted) return;
-            sounds[key].currentTime = 0;
-            sounds[key].play().catch(() => console.log("Audio load error"));
-        }
+		// --- PERSISTENCE & UI ---
 
-        function save() {
-            history = JSON.parse(JSON.stringify(state));
-            document.getElementById('undoBtn').disabled = false;
-        }
+		function saveAndRefresh() {
+		    localStorage.setItem('feudGameState', JSON.stringify(state));
+		    updateUI();
+		}
 
-        function undo() {
-            if (history) {
-                state = history;
-                history = null;
-                document.getElementById('undoBtn').disabled = true;
-                updateUI();
-            }
-        }
+		function updateUI() {
+		    document.getElementById('scoreA').innerText = state.scoreA;
+		    document.getElementById('scoreB').innerText = state.scoreB;
+		    document.getElementById('pot').innerText = state.pot;
+		    document.getElementById('undoBtn').disabled = !history;
+		    document.getElementById('muteBtn').innerText = `MUTE: ${state.muted ? 'ON' : 'OFF'}`;
+
+		    for(let i=1; i<=3; i++) {
+		        document.getElementById(`sA${i}`).className = `strike-slot ${state.strikesA >= i ? 'strike-active' : ''}`;
+		        document.getElementById(`sB${i}`).className = `strike-slot ${state.strikesB >= i ? 'strike-active' : ''}`;
+		    }
+		}
+
+		// --- NAVIGATION & BACK BUTTON ---
+
+		function showScreen(id) {
+		    document.querySelectorAll('.overlay').forEach(s => s.style.display = 'none');
+		    if(id !== 'main-screen') {
+		        document.getElementById(id).style.display = 'flex';
+		        // Add a fake history state so the Android back button has something to "pop"
+		        window.history.pushState({screen: id}, "");
+		    }
+		}
+
+		// Listen for the Android Back Button
+		window.onpopstate = function(event) {
+		    // If user presses back, hide all overlays and show main screen
+		    document.querySelectorAll('.overlay').forEach(s => s.style.display = 'none');
+		};
+
+		// --- GAME LOGIC ---
+
+		function play(key) {
+		    if (state.muted) return;
+		    sounds[key].currentTime = 0;
+		    sounds[key].play().catch(() => {});
+		}
 
 		function stopAllSounds() {
-		    Object.values(sounds).forEach(audio => {
-		        audio.pause();
-		        audio.currentTime = 0;
-		    });
+		    Object.values(sounds).forEach(s => { s.pause(); s.currentTime = 0; });
 		}
 
-		function triggerPotInput() {
-		    play('ding');
-		    setTimeout(() => {
-		        // 'prompt' doesn't support input types, but we can validate 
-		        // and ensure the UI feels snappy.
-		        const val = prompt("Add points to pot (Numbers only):");
-		        if (val && !isNaN(val)) {
-		            save();
-		            state.pot += parseInt(val);
-		            updateUI();
-		        }
-		    }, 100);
+		function recordHistory() {
+		    history = JSON.parse(JSON.stringify(state));
 		}
 
-        function transferPot(side) {
-            if (cooldown || state.pot === 0) return;
-            save();
-            play('roundWin');
-            if (side === 'A') state.scoreA += state.pot;
-            else state.scoreB += state.pot;
-            state.pot = 0; state.strikesA = 0; state.strikesB = 0;
-            startCooldown();
-            updateUI();
-        }
+		function undo() {
+		    if (history) {
+		        state = history;
+		        history = null;
+		        saveAndRefresh();
+		    }
+		}
 
-        function addStrike(side) {
-            if (cooldown) return;
-            if (side === 'A' && state.strikesA < 3) {
-                save(); state.strikesA++; play('strike'); startCooldown();
-            } else if (side === 'B' && state.strikesB < 3) {
-                save(); state.strikesB++; play('strike'); startCooldown();
-            }
-            updateUI();
-        }
+		function openPotModal() { 
+		    play('ding'); 
+		    document.getElementById('pot-modal').style.display = 'flex'; 
+		    document.getElementById('pot-input').focus(); 
+		}
 
-        function startCooldown() {
-            cooldown = true;
-            document.body.classList.add('cooldown');
-            setTimeout(() => {
-                cooldown = false;
-                document.body.classList.remove('cooldown');
-            }, 2000);
-        }
+		function closePotModal() { 
+		    document.getElementById('pot-modal').style.display = 'none'; 
+		    document.getElementById('pot-input').value = ''; 
+		}
 
-        function updateUI() {
-            document.getElementById('scoreA').innerText = state.scoreA;
-            document.getElementById('scoreB').innerText = state.scoreB;
-            document.getElementById('pot').innerText = state.pot;
-            for(let i=1; i<=3; i++) {
-                document.getElementById(`sA${i}`).className = `strike-slot ${state.strikesA >= i ? 'strike-active' : ''}`;
-                document.getElementById(`sB${i}`).className = `strike-slot ${state.strikesB >= i ? 'strike-active' : ''}`;
-            }
-        }
+		function submitPot() {
+		    const val = document.getElementById('pot-input').value;
+		    if (val && !isNaN(val)) { 
+		        recordHistory(); 
+		        state.pot += parseInt(val); 
+		        saveAndRefresh(); 
+		    }
+		    closePotModal();
+		}
 
-        function showScreen(id) {
-            document.querySelectorAll('.overlay').forEach(s => s.style.display = 'none');
-            if(id !== 'main-screen') document.getElementById(id).style.display = 'flex';
-        }
+		function transferPot(side) {
+		    if (cooldown || state.pot === 0) return;
+		    recordHistory();
+		    play('roundWin');
+		    if (side === 'A') state.scoreA += state.pot; else state.scoreB += state.pot;
+		    state.pot = 0; state.strikesA = 0; state.strikesB = 0;
+		    startCooldown(); 
+		    saveAndRefresh();
+		}
 
-        function toggleMute() {
-            state.muted = !state.muted;
-            document.getElementById('muteBtn').innerText = `MUTE: ${state.muted ? 'ON' : 'OFF'}`;
-        }
+		function addStrike(side) {
+		    if (cooldown) return;
+		    if ((side === 'A' && state.strikesA < 3) || (side === 'B' && state.strikesB < 3)) {
+		        recordHistory();
+		        if (side === 'A') state.strikesA++; else state.strikesB++;
+		        play('strike'); 
+		        startCooldown(); 
+		        saveAndRefresh();
+		    }
+		}
 
-        function fullReset() {
-            if (confirm("Reset everything?")) {
-                state = { scoreA: 0, scoreB: 0, pot: 0, strikesA: 0, strikesB: 0, muted: state.muted };
-                history = null; updateUI(); showScreen('main-screen');
-            }
-        }
+		function startCooldown() {
+		    cooldown = true; document.body.classList.add('cooldown');
+		    setTimeout(() => { cooldown = false; document.body.classList.remove('cooldown'); }, 2000);
+		}
+
+		function toggleMute() { 
+		    state.muted = !state.muted; 
+		    saveAndRefresh(); 
+		}
+
+		function fullReset() {
+		    if (confirm("Reset everything?")) {
+		        state = JSON.parse(JSON.stringify(defaultState));
+		        history = null; 
+		        saveAndRefresh(); 
+		        showScreen('main-screen');
+		    }
+		}
+
+		// Initial UI Load
+		updateUI();
     </script>
 </body>
 </html>
