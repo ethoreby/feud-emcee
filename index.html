@@ -67,7 +67,7 @@
                 <div class="fam-label">FAM A</div>
             </div>
             <button class="arrow-btn" onclick="transferPot('A')">←</button>
-            <div class="pot-box" onclick="triggerPotInput()">
+            <div class="pot-box" onclick="openPotModal()">
                 <div id="pot" class="pot-val">0</div>
                 <div style="font-size: 0.7rem; color: var(--gold)">POT</div>
             </div>
@@ -124,6 +124,19 @@
         <button class="big-btn" style="width: 80%; background: var(--red);" onclick="fullReset()">RESET GAME</button>
         <button class="undo-btn" style="margin-top: 40px;" onclick="showScreen('main-screen')">BACK</button>
     </div>
+
+    <!-- Pot Input Modal -->
+	<div id="pot-modal" class="overlay">
+	    <div style="background: var(--gray); padding: 30px; border-radius: 15px; text-align: center; width: 80%;">
+	        <h2 style="margin-top: 0;">Add to Pot</h2>
+	        <input type="number" id="pot-input" 
+	               style="width: 100%; font-size: 2rem; text-align: center; margin-bottom: 20px; border-radius: 8px; border: none; padding: 10px;">
+	        <div style="display: flex; gap: 10px;">
+	            <button class="big-btn" style="flex: 1; background: var(--red);" onclick="closePotModal()">CANCEL</button>
+	            <button class="big-btn" style="flex: 1;" onclick="submitPot()">ADD</button>
+	        </div>
+	    </div>
+	</div>
 
     <script>
         // Initialization: Try to load from localStorage, otherwise use default
@@ -212,10 +225,12 @@
 		}
 
 		function submitPot() {
-		    const val = document.getElementById('pot-input').value;
-		    if (val && !isNaN(val)) { 
+		    const input = document.getElementById('pot-input');
+		    const val = parseInt(input.value);
+		    
+		    if (!isNaN(val)) { 
 		        recordHistory(); 
-		        state.pot += parseInt(val); 
+		        state.pot += val; 
 		        saveAndRefresh(); 
 		    }
 		    closePotModal();
