@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    <title>Emcee Master</title>
+    <style>
+        :root { --gold: #ffd700; --blue: #0056b3; --red: #ff4444; --dark: #121212; --gray: #2a2a2a; }
+        body { font-family: sans-serif; background: var(--dark); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        /* Layout */
+        .score-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #000; border-bottom: 2px solid #333; }
+        .score-box { text-align: center; flex: 1; }
+        .score-val { font-size: 3rem; font-weight: bold; color: var(--gold); line-height: 1; }
+        .fam-label { font-size: 0.8rem; color: #aaa; margin-top: 5px; }
+        
+        .pot-box { border: 3px solid var(--gold); padding: 10px; border-radius: 12px; min-width: 90px; text-align: center; background: #1a1a1a; }
+        .pot-val { font-size: 2.2rem; font-weight: bold; }
+        
+        .arrow-btn { background: var(--gold); border: none; width: 45px; height: 45px; border-radius: 50%; font-size: 1.5rem; font-weight: bold; margin: 0 10px; }
+
+        .strikes-container { display: flex; justify-content: space-around; padding: 20px 10px; }
+        .strike-group { display: flex; gap: 8px; background: var(--gray); padding: 15px; border-radius: 10px; min-width: 120px; justify-content: center; }
+        .strike-slot { font-size: 2rem; font-weight: 900; color: #444; width: 30px; text-align: center; }
+        .strike-active { color: var(--red); text-shadow: 0 0 10px rgba(255,0,0,0.5); }
+
+        .undo-container { text-align: center; margin-top: 20px; }
+        .undo-btn { background: #444; color: #ccc; border: none; padding: 12px 40px; border-radius: 25px; font-size: 1rem; }
+        .undo-btn:disabled { opacity: 0.2; }
+
+        /* Navigation & Overlays */
+        .footer { margin-top: auto; display: flex; border-top: 1px solid #333; }
+        .nav-btn { flex: 1; padding: 20px; background: #1a1a1a; color: #888; border: none; font-weight: bold; }
+        
+        .overlay { position: fixed; inset: 0; background: var(--dark); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+        .sfx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 90%; }
+        .big-btn { padding: 30px 10px; font-size: 1.2rem; background: var(--blue); color: white; border: none; border-radius: 10px; }
+        
+        .cooldown { pointer-events: none; opacity: 0.7; }
+    </style>
+</head>
+<body>
+
+    <div id="main-screen" style="display: flex; flex-direction: column; height: 100%;">
+        <div class="score-row">
+            <div class="score-box">
+                <div id="scoreA" class="score-val">0</div>
+                <div class="fam-label">FAM A</div>
+            </div>
+            <button class="arrow-btn" onclick="transferPot('A')">←</button>
+            <div class="pot-box" onclick="triggerPotInput()">
+                <div id="pot" class="pot-val">0</div>
+                <div style="font-size: 0.7rem; color: var(--gold)">POT</div>
+            </div>
+            <button class="arrow-btn" onclick="transferPot('B')">→</button>
+            <div class="score-box">
+                <div id="scoreB" class="score-val">0</div>
+                <div class="fam-label">FAM B</div>
+            </div>
+        </div>
+
+        <div class="strikes-container">
+            <div class="strike-group" onclick="addStrike('A')">
+                <div id="sA1" class="strike-slot">X</div>
+                <div id="sA2" class="strike-slot">X</div>
+                <div id="sA3" class="strike-slot">X</div>
+            </div>
+            <div class="strike-group" onclick="addStrike('B')">
+                <div id="sB1" class="strike-slot">X</div>
+                <div id="sB2" class="strike-slot">X</div>
+                <div id="sB3" class="strike-slot">X</div>
+            </div>
+        </div>
+
+        <div class="undo-container">
+            <button id="undoBtn" class="undo-btn" onclick="undo()" disabled>UNDO</button>
+        </div>
+
+        <div class="footer">
+            <button class="nav-btn" onclick="showScreen('sfx-screen')">SOUND BOARD</button>
+            <button class="nav-btn" onclick="showScreen('settings-screen')">SETTINGS</button>
+        </div>
+    </div>
+
+    <!-- SFX Screen -->
+    <div id="sfx-screen" class="overlay">
+        <h2 style="margin-bottom: 30px;">Sound Board</h2>
+        <div class="sfx-grid">
+            <button class="big-btn" onclick="play('theme')">Theme</button>
+            <button class="big-btn" onclick="play('ding')">Ding</button>
+            <button class="big-btn" onclick="play('strike')">Strike</button>
+            <button class="big-btn" onclick="play('roundWin')">Win</button>
+        </div>
+        <button class="undo-btn" style="margin-top: 40px;" onclick="showScreen('main-screen')">BACK</button>
+    </div>
+
+    <!-- Settings Screen -->
+    <div id="settings-screen" class="overlay">
+        <h2>Settings</h2>
+        <button class="big-btn" style="width: 80%; margin-bottom: 20px;" onclick="toggleMute()" id="muteBtn">MUTE: OFF</button>
+        <button class="big-btn" style="width: 80%; background: var(--red);" onclick="fullReset()">RESET GAME</button>
+        <button class="undo-btn" style="margin-top: 40px;" onclick="showScreen('main-screen')">BACK</button>
+    </div>
+
+    <script>
+        let state = { scoreA: 0, scoreB: 0, pot: 0, strikesA: 0, strikesB: 0, muted: false };
+        let history = null;
+        let cooldown = false;
+
+        const sounds = {
+            theme: new Audio('soundEffects/theme.mp3'),
+            ding: new Audio('soundEffects/ding.mp3'),
+            strike: new Audio('soundEffects/strike.mp3'),
+            roundWin: new Audio('soundEffects/roundWin.mp3')
+        };
+
+        function play(key) {
+            if (state.muted) return;
+            sounds[key].currentTime = 0;
+            sounds[key].play().catch(() => console.log("Audio load error"));
+        }
+
+        function save() {
+            history = JSON.parse(JSON.stringify(state));
+            document.getElementById('undoBtn').disabled = false;
+        }
+
+        function undo() {
+            if (history) {
+                state = history;
+                history = null;
+                document.getElementById('undoBtn').disabled = true;
+                updateUI();
+            }
+        }
+
+        function triggerPotInput() {
+            play('ding');
+            setTimeout(() => {
+                const val = prompt("Add points to pot:");
+                if (val && !isNaN(val)) {
+                    save();
+                    state.pot += parseInt(val);
+                    updateUI();
+                }
+            }, 100);
+        }
+
+        function transferPot(side) {
+            if (cooldown || state.pot === 0) return;
+            save();
+            play('roundWin');
+            if (side === 'A') state.scoreA += state.pot;
+            else state.scoreB += state.pot;
+            state.pot = 0; state.strikesA = 0; state.strikesB = 0;
+            startCooldown();
+            updateUI();
+        }
+
+        function addStrike(side) {
+            if (cooldown) return;
+            if (side === 'A' && state.strikesA < 3) {
+                save(); state.strikesA++; play('strike'); startCooldown();
+            } else if (side === 'B' && state.strikesB < 3) {
+                save(); state.strikesB++; play('strike'); startCooldown();
+            }
+            updateUI();
+        }
+
+        function startCooldown() {
+            cooldown = true;
+            document.body.classList.add('cooldown');
+            setTimeout(() => {
+                cooldown = false;
+                document.body.classList.remove('cooldown');
+            }, 2000);
+        }
+
+        function updateUI() {
+            document.getElementById('scoreA').innerText = state.scoreA;
+            document.getElementById('scoreB').innerText = state.scoreB;
+            document.getElementById('pot').innerText = state.pot;
+            for(let i=1; i<=3; i++) {
+                document.getElementById(`sA${i}`).className = `strike-slot ${state.strikesA >= i ? 'strike-active' : ''}`;
+                document.getElementById(`sB${i}`).className = `strike-slot ${state.strikesB >= i ? 'strike-active' : ''}`;
+            }
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.overlay').forEach(s => s.style.display = 'none');
+            if(id !== 'main-screen') document.getElementById(id).style.display = 'flex';
+        }
+
+        function toggleMute() {
+            state.muted = !state.muted;
+            document.getElementById('muteBtn').innerText = `MUTE: ${state.muted ? 'ON' : 'OFF'}`;
+        }
+
+        function fullReset() {
+            if (confirm("Reset everything?")) {
+                state = { scoreA: 0, scoreB: 0, pot: 0, strikesA: 0, strikesB: 0, muted: state.muted };
+                history = null; updateUI(); showScreen('main-screen');
+            }
+        }
+    </script>
+</body>
+</html>
