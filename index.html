@@ -8,7 +8,13 @@
     <title>Emcee Master</title>
     <style>
         :root { --gold: #ffd700; --blue: #0056b3; --red: #ff4444; --dark: #121212; --gray: #2a2a2a; }
-        body { font-family: sans-serif; background: var(--dark); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { font-family: sans-serif; background: var(--dark); color: white; margin: 0; display: flex; flex-direction: column; 
+        	/* Use 'vh' for compatibility, but 'svh' (small viewport height) is better for mobile Chrome */
+    		height: 100vh; 
+		    height: 100svh; 
+		    padding-bottom: env(safe-area-inset-bottom); /* Fixes bezel/notch overlap */
+		    overflow: hidden; 
+		}
         
         /* Layout */
         .score-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #000; border-bottom: 2px solid #333; }
@@ -31,7 +37,13 @@
         .undo-btn:disabled { opacity: 0.2; }
 
         /* Navigation & Overlays */
-        .footer { margin-top: auto; display: flex; border-top: 1px solid #333; }
+        .footer { 
+		    margin-top: auto; 
+		    display: flex; 
+		    background: #1a1a1a;
+		    padding-bottom: env(safe-area-inset-bottom); /* Pushes buttons above the home bar */
+		    border-top: 1px solid #333;
+		}
         .nav-btn { flex: 1; padding: 20px; background: #1a1a1a; color: #888; border: none; font-weight: bold; }
         
         .overlay { position: fixed; inset: 0; background: var(--dark); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
@@ -84,17 +96,21 @@
         </div>
     </div>
 
-    <!-- SFX Screen -->
-    <div id="sfx-screen" class="overlay">
-        <h2 style="margin-bottom: 30px;">Sound Board</h2>
-        <div class="sfx-grid">
-            <button class="big-btn" onclick="play('theme')">Theme</button>
-            <button class="big-btn" onclick="play('ding')">Ding</button>
-            <button class="big-btn" onclick="play('strike')">Strike</button>
-            <button class="big-btn" onclick="play('roundWin')">Win</button>
-        </div>
-        <button class="undo-btn" style="margin-top: 40px;" onclick="showScreen('main-screen')">BACK</button>
-    </div>
+	<!-- SFX Screen -->
+	<div id="sfx-screen" class="overlay">
+	    <h2 style="margin-bottom: 20px;">Sound Board</h2>
+	    <div class="sfx-grid">
+	        <button class="big-btn" onclick="play('theme')">Theme</button>
+	        <button class="big-btn" onclick="play('ding')">Ding</button>
+	        <button class="big-btn" onclick="play('strike')">Strike</button>
+	        <button class="big-btn" onclick="play('roundWin')">Win</button>
+	    </div>
+	    <!-- New Stop Button -->
+	    <button class="big-btn" style="background: var(--red); width: 90%; margin-top: 15px;" onclick="stopAllSounds()">
+	        STOP ALL SOUNDS
+	    </button>
+	    <button class="undo-btn" style="margin-top: 30px;" onclick="showScreen('main-screen')">BACK</button>
+	</div>
 
     <!-- Settings Screen -->
     <div id="settings-screen" class="overlay">
@@ -136,17 +152,26 @@
             }
         }
 
-        function triggerPotInput() {
-            play('ding');
-            setTimeout(() => {
-                const val = prompt("Add points to pot:");
-                if (val && !isNaN(val)) {
-                    save();
-                    state.pot += parseInt(val);
-                    updateUI();
-                }
-            }, 100);
-        }
+		function stopAllSounds() {
+		    Object.values(sounds).forEach(audio => {
+		        audio.pause();
+		        audio.currentTime = 0;
+		    });
+		}
+
+		function triggerPotInput() {
+		    play('ding');
+		    setTimeout(() => {
+		        // 'prompt' doesn't support input types, but we can validate 
+		        // and ensure the UI feels snappy.
+		        const val = prompt("Add points to pot (Numbers only):");
+		        if (val && !isNaN(val)) {
+		            save();
+		            state.pot += parseInt(val);
+		            updateUI();
+		        }
+		    }, 100);
+		}
 
         function transferPot(side) {
             if (cooldown || state.pot === 0) return;
