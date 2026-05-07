@@ -340,9 +340,23 @@
 
 		function fullReset() {
 		    if (confirm("Reset everything?")) {
-		        state = JSON.parse(JSON.stringify(defaultState));
+		        // 1. Manually reset each property to ensure the reference 'state' stays intact
+		        state.scoreA = 0;
+		        state.scoreB = 0;
+		        state.pot = 0;
+		        state.strikesA = 0;
+		        state.strikesB = 0;
+
+		        // 2. Clear the history so they can't "Undo" back into the old game
 		        history = null; 
+
+		        // 3. Force clear storage
+		        localStorage.removeItem('feudGameState');
+
+		        // 4. Save the new clean state and force the UI to redraw everything
 		        saveAndRefresh(); 
+
+		        // 5. Return to main screen
 		        showScreen('main-screen');
 		    }
 		}
