@@ -107,9 +107,13 @@
             </div>
         </div>
 
-        <div class="undo-container">
-            <button id="undoBtn" class="undo-btn" onclick="undo()" disabled>UNDO</button>
-        </div>
+		<div class="undo-container">
+		    <button id="undoBtn" class="undo-btn" onclick="undo()" disabled>UNDO</button>
+		    
+		    <div style="margin-top: 15px;">
+		        <button class="undo-btn" style="padding: 5px 15px; font-size: 0.7rem; opacity: 0.6;" onclick="openBonusModal()">BONUS</button>
+		    </div>
+		</div>
 
         <div class="footer">
             <button class="nav-btn" onclick="showScreen('sfx-screen')">SOUND BOARD</button>
@@ -150,6 +154,22 @@
 	        <div style="display: flex; gap: 10px;">
 	            <button class="big-btn" style="flex: 1; background: var(--red);" onclick="closePotModal()">CANCEL</button>
 	            <button class="big-btn" style="flex: 1;" onclick="submitPot()">ADD</button>
+	        </div>
+	    </div>
+	</div>
+
+	<!-- Bonus Input Modal -->
+	<div id="bonus-modal" class="overlay">
+	    <div style="background: var(--gray); padding: 30px; border-radius: 15px; text-align: center; width: 80%;">
+	        <h2 style="margin-top: 0; color: var(--gold);">Direct Bonus</h2>
+	        <input type="number" id="bonus-input" placeholder="Points"
+	               style="width: 100%; font-size: 2rem; text-align: center; margin-bottom: 20px; border-radius: 8px; border: none; padding: 10px;">
+	        <div style="display: flex; gap: 10px; flex-direction: column;">
+	            <div style="display: flex; gap: 10px;">
+	                <button class="big-btn" style="flex: 1; background: var(--blue);" onclick="submitBonus('A')">TO A</button>
+	                <button class="big-btn" style="flex: 1; background: var(--blue);" onclick="submitBonus('B')">TO B</button>
+	            </div>
+	            <button class="big-btn" style="background: var(--red); margin-top: 5px;" onclick="closeBonusModal()">CANCEL</button>
 	        </div>
 	    </div>
 	</div>
@@ -270,6 +290,36 @@
 		    state.pot = 0; state.strikesA = 0; state.strikesB = 0;
 		    startCooldown(); 
 		    saveAndRefresh();
+		}
+
+		function openBonusModal() {
+		    const modal = document.getElementById('bonus-modal');
+		    const input = document.getElementById('bonus-input');
+		    modal.style.display = 'flex';
+		    input.focus();
+		    
+		    input.onkeydown = function(e) {
+		        if (e.key === "Enter") {
+		            // Default to A if they just hit enter, or you can leave this empty
+		        }
+		    };
+		}
+
+		function closeBonusModal() {
+		    document.getElementById('bonus-modal').style.display = 'none';
+		    document.getElementById('bonus-input').value = '';
+		}
+
+		function submitBonus(side) {
+		    const input = document.getElementById('bonus-input');
+		    const val = parseInt(input.value);
+		    
+		    if (!isNaN(val)) {
+		        recordHistory();
+		        if (side === 'A') state.scoreA += val; else state.scoreB += val;
+		        saveAndRefresh();
+		    }
+		    closeBonusModal();
 		}
 
 		function addStrike(side) {
