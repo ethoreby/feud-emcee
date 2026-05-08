@@ -170,6 +170,14 @@
 	</div>
 
     <script>
+		if ('serviceWorker' in navigator) {
+		  window.addEventListener('load', () => {
+		    navigator.serviceWorker.register('./sw.js')
+		      .then(reg => console.log('Service Worker registered'))
+		      .catch(err => console.log('Registration failed:', err));
+		  });
+		}
+
         // Initialization: Try to load from localStorage, otherwise use default
 		const defaultState = { scoreA: 0, scoreB: 0, pot: 0, strikesA: 0, strikesB: 0, muted: false };
 		let state = JSON.parse(localStorage.getItem('feudGameState')) || defaultState;
